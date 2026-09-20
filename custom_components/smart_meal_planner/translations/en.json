@@ -1,0 +1,57 @@
+{
+  "title": "Smart Meal Planner",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Smart Meal Planner",
+        "description": "Creates a local weekly meal planner with a built-in recipe catalog. External services are optional."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Smart Meal Planner can only be configured once."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Smart Meal Planner",
+        "description": "Configure household size, weekly rules, ingredient preferences and optional online recipe sources.",
+        "data": {
+          "household_size": "People in household",
+          "fish_min": "Minimum fish meals per week",
+          "fish_max": "Maximum fish meals per week",
+          "vegetarian_min": "Minimum vegetarian meals per week",
+          "vegetarian_max": "Maximum vegetarian meals per week",
+          "meat_min": "Minimum meat meals per week",
+          "meat_max": "Maximum meat meals per week",
+          "pasta_max": "Maximum pasta meals per week",
+          "rice_max": "Maximum rice meals per week",
+          "potatoes_max": "Maximum potato meals per week",
+          "special_max": "Maximum special meals per week",
+          "weekday_max_minutes": "Maximum cooking time Monday to Friday",
+          "weekend_max_minutes": "Maximum cooking time on weekends",
+          "repeat_block_days": "Recipe repeat block in days",
+          "blocked_ingredients": "Excluded ingredients",
+          "preferred_ingredients": "Preferred ingredients",
+          "pantry_staples": "Common pantry staples",
+          "internet_enabled": "Enable TheMealDB online catalog",
+          "themealdb_api_key": "TheMealDB API key",
+          "internet_sync_days": "Refresh online catalog after days"
+        },
+        "data_description": {
+          "blocked_ingredients": "Comma-separated or one ingredient per line. Matching recipes are excluded.",
+          "preferred_ingredients": "Recipes containing these ingredients are ranked higher.",
+          "pantry_staples": "Recipes using common pantry staples receive a ranking bonus.",
+          "themealdb_api_key": "Optional. A personal TheMealDB API key is required for public application use."
+        }
+      }
+    },
+    "error": {
+      "minimum_above_maximum": "The minimum value cannot be greater than the maximum value.",
+      "missing_api_key": "An API key is required when the online catalog is enabled.",
+      "invalid_api_key": "The provider rejected the API key.",
+      "cannot_connect": "TheMealDB is currently unavailable.",
+      "invalid_response": "TheMealDB returned an unexpected response."
+    }
+  }
+}

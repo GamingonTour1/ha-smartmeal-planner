@@ -1,0 +1,19 @@
+{
+  "domain": "smart_meal_planner",
+  "name": "Smart Meal Planner",
+  "codeowners": [
+    "@GamingonTour1"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom"
+  ],
+  "documentation": "https://github.com/GamingonTour1/ha-smartmeal-planner",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/GamingonTour1/ha-smartmeal-planner/issues",
+  "single_config_entry": true,
+  "version": "1.0.0"
+}

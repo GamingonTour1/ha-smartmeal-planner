@@ -1,0 +1,57 @@
+{
+  "title": "Smart Meal Planner",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Smart Meal Planner einrichten",
+        "description": "Erstellt einen lokalen Wochenplaner mit integriertem Rezeptkatalog. Externe Dienste sind optional."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Smart Meal Planner kann nur einmal eingerichtet werden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Smart Meal Planner konfigurieren",
+        "description": "Lege Haushaltsgröße, Wochenregeln, Zutatenpräferenzen und optionale Online-Rezeptquellen fest.",
+        "data": {
+          "household_size": "Personen im Haushalt",
+          "fish_min": "Fisch mindestens pro Woche",
+          "fish_max": "Fisch maximal pro Woche",
+          "vegetarian_min": "Vegetarisch mindestens pro Woche",
+          "vegetarian_max": "Vegetarisch maximal pro Woche",
+          "meat_min": "Fleisch mindestens pro Woche",
+          "meat_max": "Fleisch maximal pro Woche",
+          "pasta_max": "Nudelgerichte maximal pro Woche",
+          "rice_max": "Reisgerichte maximal pro Woche",
+          "potatoes_max": "Kartoffelgerichte maximal pro Woche",
+          "special_max": "Besondere Gerichte maximal pro Woche",
+          "weekday_max_minutes": "Maximale Kochzeit Montag bis Freitag",
+          "weekend_max_minutes": "Maximale Kochzeit am Wochenende",
+          "repeat_block_days": "Wiederholungssperre in Tagen",
+          "blocked_ingredients": "Ausgeschlossene Zutaten",
+          "preferred_ingredients": "Bevorzugte Zutaten",
+          "pantry_staples": "Typische Vorräte",
+          "internet_enabled": "TheMealDB Online-Katalog aktivieren",
+          "themealdb_api_key": "TheMealDB API-Key",
+          "internet_sync_days": "Online-Katalog automatisch neu laden nach Tagen"
+        },
+        "data_description": {
+          "blocked_ingredients": "Kommagetrennt oder eine Zutat pro Zeile. Treffer werden vollständig von Vorschlägen ausgeschlossen.",
+          "preferred_ingredients": "Rezepte mit diesen Zutaten werden höher priorisiert.",
+          "pantry_staples": "Rezepte mit typischen Vorräten erhalten einen Bonus bei der Auswahl.",
+          "themealdb_api_key": "Optional. Für den öffentlichen Einsatz ist ein eigener TheMealDB API-Key erforderlich."
+        }
+      }
+    },
+    "error": {
+      "minimum_above_maximum": "Der Mindestwert darf nicht größer als der Maximalwert sein.",
+      "missing_api_key": "Für den aktivierten Online-Katalog ist ein API-Key erforderlich.",
+      "invalid_api_key": "Der API-Key wurde vom Anbieter abgelehnt.",
+      "cannot_connect": "TheMealDB ist derzeit nicht erreichbar.",
+      "invalid_response": "TheMealDB hat eine unerwartete Antwort geliefert."
+    }
+  }
+}

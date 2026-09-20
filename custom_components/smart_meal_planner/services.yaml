@@ -1,0 +1,182 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Lennox Matzerath (GamingonTour1)
+
+generate_week:
+  name: Woche vorschlagen
+  description: Erzeugt drei passende Essensvorschläge für jeden nicht gesperrten Tag.
+  fields:
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+          mode: box
+
+generate_day:
+  name: Tag neu vorschlagen
+  description: Erzeugt drei neue Vorschläge für einen Wochentag.
+  fields:
+    day_index:
+      name: Tag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 1
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+
+select_suggestion:
+  name: Vorschlag auswählen
+  description: Übernimmt einen der drei Vorschläge in den Wochenplan.
+  fields:
+    day_index:
+      name: Tag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 1
+    suggestion_index:
+      name: Vorschlag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 2
+          step: 1
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+
+set_manual_meal:
+  name: Freitext eintragen
+  description: Trägt ein frei formuliertes Essen in den Wochenplan ein.
+  fields:
+    day_index:
+      name: Tag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 1
+    text:
+      name: Essen
+      required: true
+      selector:
+        text:
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+
+clear_day:
+  name: Tag leeren
+  description: Entfernt das ausgewählte Essen eines Tages.
+  fields:
+    day_index:
+      name: Tag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 1
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+
+set_day_lock:
+  name: Tag sperren oder entsperren
+  description: Gesperrte Tage bleiben beim erneuten Planen unverändert.
+  fields:
+    day_index:
+      name: Tag
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 6
+          step: 1
+    locked:
+      name: Gesperrt
+      required: true
+      selector:
+        boolean:
+    week_offset:
+      name: Wochenversatz
+      default: 0
+      selector:
+        number:
+          min: -4
+          max: 12
+          step: 1
+
+rate_recipe:
+  name: Rezept bewerten
+  description: Beeinflusst die Priorität eines Rezepts bei künftigen Vorschlägen.
+  fields:
+    recipe_id:
+      name: Rezept-ID
+      required: true
+      selector:
+        text:
+    rating:
+      name: Bewertung
+      required: true
+      selector:
+        number:
+          min: -2
+          max: 2
+          step: 1
+
+block_recipe:
+  name: Rezept sperren
+  description: Schließt ein Rezept dauerhaft von Vorschlägen aus.
+  fields:
+    recipe_id:
+      name: Rezept-ID
+      required: true
+      selector:
+        text:
+
+import_recipe_url:
+  name: Rezept von URL importieren
+  description: Importiert strukturierte schema.org/Recipe-Daten einer Rezeptwebseite.
+  fields:
+    url:
+      name: Rezept-URL
+      required: true
+      selector:
+        text:
+          type: url
+
+refresh_internet:
+  name: Online-Katalog synchronisieren
+  description: Synchronisiert den über TheMealDB erreichbaren Rezeptkatalog.
