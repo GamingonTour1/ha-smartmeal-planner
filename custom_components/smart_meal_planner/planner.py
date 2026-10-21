@@ -23,6 +23,7 @@ from .const import (
 )
 from .provider import ProviderError, TheMealDBProvider
 from .recipes import BUILTIN_RECIPES, format_ingredient_detail
+from .security import safe_http_url
 from .url_import import extract_recipe
 
 DAY_NAMES = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
@@ -213,30 +214,74 @@ class MealPlannerRuntime:
     def _diversity_key(recipe: dict[str, Any]) -> tuple[str, str]:
         return (str(recipe.get("family") or ""), str(recipe.get("primary") or ""))
 
-    def generate_day(self, day_index: int, week_offset: int = 0) -> None:
+    @staticmethod
+    def _recipe_keys(recipe: dict[str, Any] | None) -> set[str]:
+        if not isinstance(recipe, dict):
+            return set()
+        keys: set[str] = set()
+        recipe_id = str(recipe.get("id") or "").strip()
+        if recipe_id:
+            keys.add(f"id:{recipe_id}")
+        name = " ".join(str(recipe.get("name") or "").casefold().split())
+        if name:
+            keys.add(f"name:{name}")
+        return keys
+
+    def _week_recipe_keys(self, week: dict[str, Any], exclude_day_index: int | None = None) -> set[str]:
+        keys: set[str] = set()
+        for index, other_day in enumerate(week.get("days", [])):
+            if exclude_day_index is not None and index == exclude_day_index:
+                continue
+            keys.update(self._recipe_keys(other_day.get("selected")))
+            for suggestion in other_day.get("suggestions", []):
+                keys.update(self._recipe_keys(suggestion))
+        return keys
+
+    def generate_day(
+        self,
+        day_index: int,
+        week_offset: int = 0,
+        extra_excluded_keys: set[str] | None = None,
+        exclude_current_suggestions: bool = True,
+    ) -> None:
         week = self.get_week(week_offset)
         day = week["days"][day_index]
         if day.get("locked") and day.get("selected"):
             return
 
+        excluded_keys = self._week_recipe_keys(week, exclude_day_index=day_index)
+        if extra_excluded_keys:
+            excluded_keys.update(extra_excluded_keys)
+        excluded_keys.update(self._recipe_keys(day.get("selected")))
+        if exclude_current_suggestions:
+            for suggestion in day.get("suggestions", []):
+                excluded_keys.update(self._recipe_keys(suggestion))
+
         counts = self._counts(week)
         recipes = self.all_recipes()
-        everyday = sorted(
-            recipes,
-            key=lambda recipe: self._score(recipe, day_index, counts, False),
-            reverse=True,
-        )
-        special = sorted(
-            recipes,
-            key=lambda recipe: self._score(recipe, day_index, counts, True),
-            reverse=True,
-        )
+
+        def ranked(desired_special: bool) -> list[dict[str, Any]]:
+            scored: list[tuple[float, dict[str, Any]]] = []
+            for recipe in recipes:
+                if self._recipe_keys(recipe) & excluded_keys:
+                    continue
+                score = self._score(recipe, day_index, counts, desired_special)
+                if score <= -9000:
+                    continue
+                scored.append((score, recipe))
+            scored.sort(key=lambda item: item[0], reverse=True)
+            return [recipe for _score, recipe in scored]
+
+        everyday = ranked(False)
+        special = ranked(True)
 
         picked: list[dict[str, Any]] = []
+        picked_keys: set[str] = set()
         seen_families: set[str] = set()
         seen_primary: set[str] = set()
         for recipe in everyday:
-            if self._score(recipe, day_index, counts, False) <= -9000:
+            recipe_keys = self._recipe_keys(recipe)
+            if recipe_keys & picked_keys:
                 continue
             family, primary = self._diversity_key(recipe)
             if family and family in seen_families:
@@ -244,6 +289,7 @@ class MealPlannerRuntime:
             if primary and primary in seen_primary and len(picked) == 1:
                 continue
             picked.append(recipe)
+            picked_keys.update(recipe_keys)
             if family:
                 seen_families.add(family)
             if primary:
@@ -252,9 +298,8 @@ class MealPlannerRuntime:
                 break
 
         for recipe in special:
-            if self._score(recipe, day_index, counts, True) <= -9000:
-                continue
-            if recipe.get("id") in {item.get("id") for item in picked}:
+            recipe_keys = self._recipe_keys(recipe)
+            if recipe_keys & picked_keys:
                 continue
             family, _primary = self._diversity_key(recipe)
             if family and family in seen_families:
@@ -285,12 +330,27 @@ class MealPlannerRuntime:
             try:
                 await self.async_refresh_internet()
             except ProviderError:
-                # Meal planning remains fully functional with the built-in catalog.
                 pass
         week = self.get_week(week_offset)
+        previous_suggestion_keys: set[str] = set()
+        for day in week["days"]:
+            if day.get("selected"):
+                day["suggestions"] = []
+                continue
+            if day.get("locked"):
+                continue
+            for suggestion in day.get("suggestions", []):
+                previous_suggestion_keys.update(self._recipe_keys(suggestion))
+            day["suggestions"] = []
+
         for index, day in enumerate(week["days"]):
-            if not day.get("locked"):
-                self.generate_day(index, week_offset)
+            if not day.get("selected") and not day.get("locked"):
+                self.generate_day(
+                    index,
+                    week_offset,
+                    extra_excluded_keys=previous_suggestion_keys,
+                    exclude_current_suggestions=False,
+                )
         await self.async_save()
 
     async def async_generate_day(self, day_index: int, week_offset: int = 0) -> None:
@@ -298,18 +358,23 @@ class MealPlannerRuntime:
         await self.async_save()
 
     async def async_select(self, day_index: int, suggestion_index: int, week_offset: int = 0) -> None:
-        day = self.get_week(week_offset)["days"][day_index]
+        week = self.get_week(week_offset)
+        day = week["days"][day_index]
         suggestions = day.get("suggestions", [])
         if suggestion_index < 0 or suggestion_index >= len(suggestions):
             raise ValueError("invalid_suggestion")
         day["selected"] = deepcopy(suggestions[suggestion_index])
+        day["suggestions"] = []
         day["manual"] = False
         self._record_history(day)
-        # Recalculate open days so their suggestions immediately reflect the new weekly counts.
-        week = self.get_week(week_offset)
+
+        open_indices: list[int] = []
         for index, other_day in enumerate(week["days"]):
             if index != day_index and not other_day.get("selected") and not other_day.get("locked"):
-                self.generate_day(index, week_offset)
+                other_day["suggestions"] = []
+                open_indices.append(index)
+        for index in open_indices:
+            self.generate_day(index, week_offset, exclude_current_suggestions=False)
         await self.async_save()
 
     async def async_manual(self, day_index: int, text: str, week_offset: int = 0) -> None:
@@ -360,19 +425,22 @@ class MealPlannerRuntime:
         self.state["history"] = self.state["history"][-365:]
 
     async def async_import_url(self, url: str) -> dict[str, Any]:
+        source_url = safe_http_url(url)
+        if source_url is None:
+            raise ValueError("invalid_url")
         session = async_get_clientsession(self.hass)
         async with session.get(
-            url,
+            source_url,
             timeout=20,
-            headers={"User-Agent": "HomeAssistant SmartMealPlanner/1.1.2"},
+            headers={"User-Agent": "HomeAssistant SmartMealPlanner/1.1.4"},
         ) as response:
             response.raise_for_status()
             html = await response.text()
-        recipe = extract_recipe(html, url)
+        recipe = extract_recipe(html, source_url)
         if not recipe:
             raise ValueError("recipe_not_found")
         imported = self.state.setdefault("imported_recipes", [])
-        imported[:] = [item for item in imported if item.get("url") != url]
+        imported[:] = [item for item in imported if item.get("url") != source_url]
         imported.append(recipe)
         await self.async_save()
         return recipe
@@ -401,6 +469,9 @@ class MealPlannerRuntime:
             result = deepcopy(BUILTIN_RECIPE_MAP[recipe_id])
         else:
             result = deepcopy(recipe)
+
+        for field in ("url", "youtube", "image"):
+            result[field] = safe_http_url(result.get(field))
 
         details = result.get("ingredient_details")
         if isinstance(details, list) and details:

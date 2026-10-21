@@ -9,6 +9,9 @@ import json
 from html.parser import HTMLParser
 import re
 from typing import Any
+from urllib.parse import urljoin
+
+from .security import safe_http_url
 
 
 class _JsonLdParser(HTMLParser):
@@ -90,6 +93,10 @@ def _publisher_name(value: Any) -> str:
 
 
 def extract_recipe(html: str, url: str) -> dict[str, Any] | None:
+    source_url = safe_http_url(url)
+    if source_url is None:
+        return None
+
     parser = _JsonLdParser()
     parser.feed(html)
     for block in parser.blocks:
@@ -106,6 +113,9 @@ def extract_recipe(html: str, url: str) -> dict[str, Any] | None:
                 image = image[0] if image else None
             if isinstance(image, dict):
                 image = image.get("url")
+            if isinstance(image, str):
+                image = urljoin(source_url, image)
+            image = safe_http_url(image)
 
             ingredients = node.get("recipeIngredient") or []
             if not isinstance(ingredients, list):
@@ -129,7 +139,7 @@ def extract_recipe(html: str, url: str) -> dict[str, Any] | None:
             if any(token in merged for token in ["potato", "kartoffel"]):
                 tags.append("potatoes")
 
-            identifier = hashlib.sha256(url.encode("utf-8")).hexdigest()[:20]
+            identifier = hashlib.sha256(source_url.encode("utf-8")).hexdigest()[:20]
             return {
                 "id": f"imported_{identifier}",
                 "name": node.get("name") or "Importiertes Rezept",
@@ -142,7 +152,7 @@ def extract_recipe(html: str, url: str) -> dict[str, Any] | None:
                 "instructions": _instructions(node.get("recipeInstructions")),
                 "source": _publisher_name(node.get("publisher")),
                 "source_type": "imported",
-                "url": url,
+                "url": source_url,
                 "image": image,
                 "category": category,
                 "area": cuisine,

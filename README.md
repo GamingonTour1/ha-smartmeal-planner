@@ -29,6 +29,8 @@ Ein externer Rezeptmanager ist nicht erforderlich. Der integrierte Rezeptkatalog
 - automatische Skalierung der Zutatenmengen auf die konfigurierte Haushaltsgröße
 - Auswahl eines Vorschlags oder Eintrag eines eigenen Freitext-Essens
 - einzelne Tage oder die gesamte Woche neu planen
+- wochenweite Duplikat-Vermeidung: dasselbe Rezept wird innerhalb einer Woche nicht mehrfach vorgeschlagen
+- beim Neuplanen eines einzelnen Tages werden die bisherigen Vorschläge dieses Tages ausgeschlossen
 - einzelne Tage sperren, damit sie beim erneuten Planen unverändert bleiben
 - Mindest- und Höchstwerte pro Woche für Fisch, vegetarische Gerichte und Fleisch
 - Höchstwerte pro Woche für Nudel-, Reis-, Kartoffel- und besondere Gerichte
@@ -42,6 +44,7 @@ Ein externer Rezeptmanager ist nicht erforderlich. Der integrierte Rezeptkatalog
 - lokaler, persistenter Speicher innerhalb von Home Assistant
 - Import von Rezepten über Webseiten mit `schema.org/Recipe`-Daten
 - optionaler Online-Rezeptkatalog über TheMealDB
+- Sicherheitsprüfung externer Bild-, Quellen- und Video-URLs; zugelassen werden ausschließlich HTTP- und HTTPS-Adressen
 - Home-Assistant-Sensoren, Buttons und Aktionen für Automatisierungen und Skripte
 
 ## Voraussetzungen
@@ -117,6 +120,7 @@ Die Verzeichnisstruktur muss anschließend so aussehen:
         ├── planner.py
         ├── provider.py
         ├── recipes.py
+        ├── security.py
         ├── sensor.py
         ├── services.yaml
         ├── url_import.py
@@ -172,7 +176,7 @@ Die Seite **Essensplan** zeigt die aktuelle Woche mit allen sieben Wochentagen.
 
 ### Neue Woche vorschlagen
 
-Über **Woche vorschlagen** werden für alle nicht gesperrten Tage neue Vorschläge erzeugt. Bereits ausgewählte und gesperrte Tage bleiben erhalten.
+Über **Woche vorschlagen** werden für alle nicht gesperrten Tage neue Vorschläge erzeugt. Bereits ausgewählte und gesperrte Tage bleiben erhalten. Bereits verwendete Vorschläge der aktuellen Woche werden nach Möglichkeit nicht direkt erneut verwendet.
 
 ### Drei Vorschläge pro Tag
 
@@ -183,6 +187,8 @@ Für einen offenen Tag werden bis zu drei unterschiedliche Vorschläge erzeugt:
 3. ein besonderes oder abwechslungsreicheres Gericht
 
 Die Vorschläge werden anhand der konfigurierten Regeln bewertet. Wochenlimits, ausgeschlossene Zutaten und gesperrte Rezepte werden berücksichtigt.
+
+Innerhalb einer Woche wird dasselbe Rezept nicht mehrfach vorgeschlagen. Dabei werden sowohl die Rezept-ID als auch der normalisierte Rezeptname berücksichtigt, damit identische Rezepte aus unterschiedlichen Quellen nicht doppelt auftauchen. Wird ein einzelner Tag neu geplant, werden zusätzlich die bisherigen Vorschläge dieses Tages ausgeschlossen.
 
 ### Gericht auswählen
 
@@ -227,6 +233,8 @@ Die Rezeptansicht kann abhängig von der Quelle folgende Informationen anzeigen:
 - Möglichkeit, das Rezept dauerhaft von Vorschlägen auszuschließen
 
 Bei den integrierten Rezepten sind die Zutatenmengen für zwei Portionen strukturiert hinterlegt. Smart Meal Planner skaliert diese Angaben automatisch auf die unter **Personen im Haushalt** konfigurierte Portionszahl. Dabei werden Einheiten wie Gramm, Milliliter, Stück, Esslöffel und Teelöffel entsprechend umgerechnet.
+
+Externe Bild-, Quellen- und Video-Links werden vor der Verwendung validiert. Es werden ausschließlich URLs mit dem Schema `http` oder `https` akzeptiert. Andere Schemata wie `javascript:`, `data:`, `file:` oder `mailto:` werden verworfen.
 
 ## Integrierter Rezeptkatalog
 
@@ -280,6 +288,8 @@ TheMealDB ist vollständig optional. Ohne TheMealDB bleibt Smart Meal Planner mi
 Beim Speichern wird der API-Zugang geprüft. Ist der Anbieter nicht erreichbar oder wird der Schlüssel abgelehnt, zeigt Home Assistant einen entsprechenden Fehler an.
 
 Nach erfolgreicher Einrichtung kann der Online-Katalog synchronisiert werden. Die erreichbaren Rezepte werden lokal gespeichert und gemeinsam mit dem integrierten Katalog für Vorschläge verwendet.
+
+Von TheMealDB gelieferte Bild-, Quellen- und Video-URLs werden bereits beim Import auf zulässige HTTP- beziehungsweise HTTPS-Adressen geprüft. Zusätzlich erfolgt vor der Darstellung im Home-Assistant-Frontend eine weitere Sicherheitsprüfung.
 
 ## Bewertungen und gesperrte Rezepte
 

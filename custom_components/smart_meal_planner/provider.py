@@ -10,6 +10,8 @@ from typing import Any
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .security import safe_http_url
+
 
 class ProviderError(Exception):
     """Raised when an online recipe provider cannot be used."""
@@ -127,8 +129,9 @@ class TheMealDBProvider:
         if "potato" in search_blob:
             tags.append("potatoes")
 
-        source_url = (meal.get("strSource") or "").strip()
-        youtube = (meal.get("strYoutube") or "").strip()
+        source_url = safe_http_url(meal.get("strSource"))
+        youtube = safe_http_url(meal.get("strYoutube"))
+        image = safe_http_url(meal.get("strMealThumb"))
         instructions = self._split_instructions(
             meal.get("strInstructionsDE") or meal.get("strInstructions") or ""
         )
@@ -148,7 +151,7 @@ class TheMealDBProvider:
             "source_type": "themealdb",
             "url": source_url,
             "youtube": youtube,
-            "image": meal.get("strMealThumb"),
+            "image": image,
             "category": category,
             "area": area,
             "family": f"themealdb:{category_l or 'other'}",

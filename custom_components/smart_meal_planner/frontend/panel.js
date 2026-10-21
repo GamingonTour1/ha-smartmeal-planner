@@ -46,6 +46,17 @@ class SmartMealPlannerPanel extends HTMLElement {
     return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  _safeHttpUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    try {
+      const parsed = new URL(value.trim());
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+      return parsed.href;
+    } catch (_) {
+      return null;
+    }
+  }
+
   _fmtDate(raw) {
     try {
       return new Intl.DateTimeFormat('de-DE', {day:'2-digit', month:'2-digit'}).format(new Date(`${raw}T12:00:00`));
@@ -137,7 +148,7 @@ class SmartMealPlannerPanel extends HTMLElement {
 
   _selected(recipe, day, index) {
     const tags = (recipe.tags || []).map(tag => `<span class="tag">${this._esc(this._tagName(tag))}</span>`).join('');
-    const hasRecipe = (recipe.ingredients?.length || recipe.instructions?.length || recipe.url) && !day.manual;
+    const hasRecipe = (recipe.ingredients?.length || recipe.instructions?.length || this._safeHttpUrl(recipe.url)) && !day.manual;
     return `<div class="selected">
       <div class="check">✓</div>
       <div class="selectedbody">
@@ -156,8 +167,9 @@ class SmartMealPlannerPanel extends HTMLElement {
     }
     return `<div class="suggestions">${items.map((recipe, index) => {
       const kind = index === 2 ? '✨ Besonders' : index === 0 ? '🏠 Einfach' : '🍽 Alternative';
+      const imageUrl = this._safeHttpUrl(recipe.image);
       return `<article class="suggestion">
-        ${recipe.image ? `<img src="${this._esc(recipe.image)}" loading="lazy" alt="">` : ''}
+        ${imageUrl ? `<img src="${this._esc(imageUrl)}" loading="lazy" alt="">` : ''}
         <div class="suggestionbody">
           <small>${kind}</small>
           <h3>${this._esc(recipe.name)}</h3>
@@ -175,9 +187,12 @@ class SmartMealPlannerPanel extends HTMLElement {
     const tags = (recipe.tags || []).map(tag => `<span class="tag">${this._esc(this._tagName(tag))}</span>`).join('');
     const ingredients = (recipe.ingredients || []).map(item => `<li>${this._esc(item)}</li>`).join('');
     const instructions = (recipe.instructions || []).map((step, index) => `<li><span>${index + 1}</span><p>${this._esc(step)}</p></li>`).join('');
+    const sourceUrl = this._safeHttpUrl(recipe.url);
+    const youtubeUrl = this._safeHttpUrl(recipe.youtube);
+    const imageUrl = this._safeHttpUrl(recipe.image);
     const sourceButtons = [
-      recipe.url ? `<button class="secondary" data-action="open-url" data-url="${this._esc(recipe.url)}">Originalquelle ↗</button>` : '',
-      recipe.youtube ? `<button class="secondary" data-action="open-url" data-url="${this._esc(recipe.youtube)}">Video ↗</button>` : ''
+      sourceUrl ? `<button class="secondary" data-action="open-url" data-url="${this._esc(sourceUrl)}">Originalquelle ↗</button>` : '',
+      youtubeUrl ? `<button class="secondary" data-action="open-url" data-url="${this._esc(youtubeUrl)}">Video ↗</button>` : ''
     ].join('');
     const servingNote = recipe.servings
       ? `<span>${typeof recipe.servings === 'number' ? `${recipe.servings} Portionen` : this._esc(recipe.servings)}</span>`
@@ -186,7 +201,7 @@ class SmartMealPlannerPanel extends HTMLElement {
     return `<div class="modal-backdrop" data-action="close-detail">
       <section class="modal" role="dialog" aria-modal="true" aria-label="Rezeptdetails" data-modal="stop">
         <button class="modal-close" data-action="close-detail" aria-label="Schließen">×</button>
-        ${recipe.image ? `<img class="hero" src="${this._esc(recipe.image)}" alt="">` : ''}
+        ${imageUrl ? `<img class="hero" src="${this._esc(imageUrl)}" alt="">` : ''}
         <div class="modal-content">
           <div class="eyebrow">${this._esc(recipe.source || 'REZEPT')}</div>
           <h2>${this._esc(recipe.name)}</h2>
@@ -239,7 +254,12 @@ class SmartMealPlannerPanel extends HTMLElement {
         window.alert('Der Online-Katalog wurde synchronisiert.');
       }
       if (action === 'settings') window.location.href = '/config/integrations/integration/smart_meal_planner';
-      if (action === 'open-url') window.open(element.dataset.url, '_blank', 'noopener');
+      if (action === 'open-url') {
+        const url = this._safeHttpUrl(element.dataset.url);
+        if (!url) throw new Error('Unsichere oder ungültige URL.');
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (opened) opened.opener = null;
+      }
       if (action === 'detail-selected') {
         this._modalRecipe = this._selectedRecipe(day);
         this.render();

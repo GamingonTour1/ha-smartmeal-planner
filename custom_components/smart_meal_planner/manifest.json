@@ -15,5 +15,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/GamingonTour1/ha-smartmeal-planner/issues",
   "single_config_entry": true,
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
